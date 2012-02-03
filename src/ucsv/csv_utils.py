@@ -12,11 +12,11 @@ class PETDialect(csv.Dialect):
     encoding = 'utf-8'
 setattr(csv.excel_tab, 'encoding', 'utf-16')
     
-def export_csv(filename, dicts, fieldnames=None, dialect=PETDialect, append=False):
+def export_csv(filename, dicts, fieldnames=None, dialect=PETDialect, append=False, writeheader=True):
     if fieldnames is None: fieldnames = sorted(dicts[0].keys())
     with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding) as f:
         csv_out = csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames)
-        if not append: csv_out.writeheader()
+        if writeheader and not append: csv_out.writeheader()
         for d in dicts:
             csv_out.writerow(dict((k, d.get(k, '')) for k in fieldnames))
         f.flush()
