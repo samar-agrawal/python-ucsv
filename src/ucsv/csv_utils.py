@@ -12,7 +12,8 @@ class PETDialect(csv.Dialect):
     encoding = 'utf-8'
 setattr(csv.excel_tab, 'encoding', 'utf-16')
     
-def export_csv(filename, dicts, fieldnames=None, dialect=PETDialect, append=False, writeheader=True):
+def export_csv(filename, dicts, fieldnames=None, dialect=None, append=False, writeheader=True):
+    if not dialect: dialect = get_dialect(filename)
     if fieldnames is None: fieldnames = sorted(dicts[0].keys())
     with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding) as f:
         csv_out = csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames)
@@ -21,7 +22,8 @@ def export_csv(filename, dicts, fieldnames=None, dialect=PETDialect, append=Fals
             csv_out.writerow(dict((k, d.get(k, '')) for k in fieldnames))
         f.flush()
 
-def export_csv_tuples(filename, tuples, header=None, dialect=PETDialect):
+def export_csv_tuples(filename, tuples, header=None, dialect=None):
+    if not dialect: dialect = get_dialect(filename)
     with io.open(filename, 'wt', newline='', encoding=dialect.encoding) as f:
         csv_out = csv.writer(f, dialect=dialect)
         if header: csv_out.writerow(header)
@@ -29,16 +31,23 @@ def export_csv_tuples(filename, tuples, header=None, dialect=PETDialect):
             csv_out.writerow(t)
         f.flush()
         
-def import_csv(filename, dialect=PETDialect):  
+def get_dialect(filename):
+    if filename.endswith("txt"): return csv.excel_tab
+    if filename.endswith("csv"): return PETDialect
+    raise ValueError
+        
+def import_csv(filename, dialect=None):
+    if not dialect: dialect = get_dialect(filename)
     with io.open(filename, 'rt', encoding=dialect.encoding) as f:
         return list( csv.DictReader(f, dialect=dialect) )
         
-def import_csv_iter(filename, dialect=PETDialect):  
+def import_csv_iter(filename, dialect=None):  
+    if not dialect: dialect = get_dialect(filename)
     with io.open(filename, 'rt', encoding=dialect.encoding) as f:
         for e in csv.DictReader(f, dialect=dialect):
             yield e
     
-def merge_csvs(csvs, output_filename, dialect_in=PETDialect, dialect_out=PETDialect):
+def merge_csvs(csvs, output_filename):
     drs = list(itertools.chain(*[import_csv(c) for c in csvs]))
     dr_concat = lambda acc, val: acc | set(val.keys())
     dr_reducer = lambda acc, val: acc & set(val.keys())
@@ -53,7 +62,8 @@ def merge_csvs(csvs, output_filename, dialect_in=PETDialect, dialect_out=PETDial
 
     export_csv(output_filename, drs_small, fieldnames=drs_keys)
     
-def grouped_csv(input_filename, output_filename, dialect=PETDialect, key=lambda e: e['sku_config']):
+def grouped_csv(input_filename, output_filename, dialect=None, key=lambda e: e['sku_config']):
+    if not dialect: dialect = get_dialect(input_filename)
     other_key = lambda e: e[0]
     rows = import_csv(input_filename, dialect=dialect)
     static_keys = None
@@ -71,7 +81,7 @@ def grouped_csv(input_filename, output_filename, dialect=PETDialect, key=lambda 
 
 def slim_csv(input_filename, output_filename, fieldnames):
     sanitize = lambda e: e.replace('\r\n', '<br/>').replace('\n', '<br/>')
-    rows = import_csv(input_filename, dialect=PETDialect)
+    rows = import_csv(input_filename)
     rows = [dict((k, sanitize(r.get(k, ''))) for k in fieldnames) for r in rows]
     export_csv(output_filename, rows, fieldnames)
 
