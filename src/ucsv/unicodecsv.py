@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
 import csv
 from csv import *
-import codecs
 from cStringIO import StringIO
 
 setattr(csv.excel_tab, 'encoding', 'utf-16')
 
 encode = lambda e: unicode(e).encode('utf-8')
 decode = lambda e: e.decode('utf-8')
+
+try:
+    from collections import OrderedDict as thedict
+except ImportError:
+    try:
+        from ordereddict import OrderedDict as thedict
+    except ImportError:
+        thedict = dict
 
 
 class reader(object):
@@ -63,11 +70,11 @@ class DictWriter(object):
         self.queue.truncate(0)
         
     def writerow(self, row, flush=True):
-        self.writer.writerow(dict((encode(k), encode(v)) for k, v in row.items()))
+        self.writer.writerow(thedict((encode(k), encode(row.get(k, ''))) for k in self.writer.fieldnames))
         if flush: self.flush()
 
     def writeheader(self):
-        self.writerow(dict((f, f) for f in self.writer.fieldnames), flush=False)
+        self.writerow(thedict((f, f) for f in self.writer.fieldnames), flush=False)
         self.flush()
         
     def writerows(self, rows):
@@ -86,7 +93,7 @@ class UTF8Encoder(object):
             yield encode(e)
         
 class DictReader(object):
-    def __init__(self, f, dict=dict, *args, **kwargs):
+    def __init__(self, f, dict=thedict, *args, **kwargs):
         self.dict = dict
         self.reader = csv.DictReader(UTF8Encoder(f), *args, **kwargs)
         

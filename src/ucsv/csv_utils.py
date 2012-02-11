@@ -1,6 +1,5 @@
 import itertools, io
 import unicodecsv as csv
-from StringIO import StringIO
 from itertools import groupby
 
 class PETDialect(csv.Dialect):
@@ -11,16 +10,24 @@ class PETDialect(csv.Dialect):
     lineterminator = '\r\n'
     encoding = 'utf-8'
 setattr(csv.excel_tab, 'encoding', 'utf-16')
-    
-def export_csv(filename, dicts, fieldnames=None, dialect=None, append=False, writeheader=True):
+
+def export_csv(filename, dicts, *args, **kwargs):
+    w = export_csv_iter(filename, *args, **kwargs)
+    w.next()
+    for d in dicts:
+        w.send(d)
+    w.close()
+
+def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, writeheader=True):
     if not dialect: dialect = get_dialect(filename)
-    if fieldnames is None: fieldnames = sorted(dicts[0].keys())
+    row = yield
+    if fieldnames is None: fieldnames = sorted(row.keys())
     with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding) as f:
         csv_out = csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames)
         if writeheader and not append: csv_out.writeheader()
-        for d in dicts:
-            csv_out.writerow(dict((k, d.get(k, '')) for k in fieldnames))
-        f.flush()
+        while True:
+            csv_out.writerow(row)
+            row = yield
 
 def export_csv_tuples(filename, tuples, header=None, dialect=None):
     if not dialect: dialect = get_dialect(filename)
