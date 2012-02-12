@@ -1,6 +1,8 @@
 import itertools, io
-import unicodecsv as csv
+from ucsv import unicodecsv as csv
 from itertools import groupby
+from collections import defaultdict
+from hzutils.hzasq import *
 
 class PETDialect(csv.Dialect):
     delimiter = ';'
@@ -53,26 +55,32 @@ def import_csv_iter(filename, dialect=None):
     with io.open(filename, 'rt', encoding=dialect.encoding) as f:
         for e in csv.DictReader(f, dialect=dialect):
             yield e
-    
-def merge_csvs(csvs, output_filename):
-    drs = list(itertools.chain(*[import_csv(c) for c in csvs]))
-    dr_concat = lambda acc, val: acc | set(val.keys())
-    dr_reducer = lambda acc, val: acc & set(val.keys())
-    drs_potential_keys = reduce(dr_concat, drs, set(drs[0].keys()))
-    drs_potential_keys = sorted(list(drs_potential_keys))
-    drs_keys = reduce(dr_reducer, drs, set(drs[0].keys()))
-    drs_keys = sorted(list(drs_keys))
-    for k in (set(drs_potential_keys) - set(drs_keys)):
-        if 'size' in k:
-            drs_keys.append(k)
-    drs_small = [dict((k, v.get(k, '')) for k in drs_keys) for v in drs]
 
-    export_csv(output_filename, drs_small, fieldnames=drs_keys)
+def get_common_keys(rows, force_include=lambda k: False):
+    counter = defaultdict(int)
+    for row in rows:
+        for k in row:
+            counter[k] += 1
+    return sorted([k for k, v in counter.items() if (v == len(rows)) or force_include(k)])
+
+def get_all_keys(rows, force_include=None):
+    keys = set()
+    for row in rows:
+        keys.update(row.keys())
+    return sorted(keys)
+
+def import_csvs(csvs):
+    return list(itertools.chain(*[import_csv(c) for c in csvs]))
+    
+def merge_csvs(csvs, output_filename, keys=get_common_keys):
+    rows = import_csvs(csvs)
+    if callable(keys): keys = keys(rows)
+    export_csv(output_filename, query(rows).project(*keys))
     
 def grouped_csv(input_filename, output_filename, dialect=None, key=lambda e: e['sku_config']):
     if not dialect: dialect = get_dialect(input_filename)
     other_key = lambda e: e[0]
-    rows = import_csv(input_filename, dialect=dialect)
+    rows = import_csv(input_filename)
     static_keys = None
     for group, items in groupby(sorted(rows, key=key), key=key):
         items = list(set([i for item in items for i in item.items()]))

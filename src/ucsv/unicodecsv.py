@@ -9,12 +9,12 @@ encode = lambda e: unicode(e).encode('utf-8')
 decode = lambda e: e.decode('utf-8')
 
 try:
-    from collections import OrderedDict as thedict
+    from collections import OrderedDict
 except ImportError:
     try:
-        from ordereddict import OrderedDict as thedict
+        from ordereddict import OrderedDict
     except ImportError:
-        thedict = dict
+        OrderedDict = dict
 
 
 class reader(object):
@@ -70,11 +70,11 @@ class DictWriter(object):
         self.queue.truncate(0)
         
     def writerow(self, row, flush=True):
-        self.writer.writerow(thedict((encode(k), encode(row.get(k, ''))) for k in self.writer.fieldnames))
+        self.writer.writerow(OrderedDict((encode(k), encode(row.get(k, ''))) for k in self.writer.fieldnames))
         if flush: self.flush()
 
     def writeheader(self):
-        self.writerow(thedict((f, f) for f in self.writer.fieldnames), flush=False)
+        self.writerow(OrderedDict((f, f) for f in self.writer.fieldnames), flush=False)
         self.flush()
         
     def writerows(self, rows):
@@ -93,7 +93,7 @@ class UTF8Encoder(object):
             yield encode(e)
         
 class DictReader(object):
-    def __init__(self, f, dict=thedict, *args, **kwargs):
+    def __init__(self, f, dict=OrderedDict, *args, **kwargs):
         self.dict = dict
         self.reader = csv.DictReader(UTF8Encoder(f), *args, **kwargs)
         
