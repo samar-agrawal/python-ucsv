@@ -21,7 +21,7 @@ def export_csv(filename, dicts, *args, **kwargs):
 def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, writeheader=True):
     if not dialect: dialect = get_dialect(filename)
     row = yield
-    if fieldnames is None: fieldnames = sorted(row.keys())
+    if fieldnames is None: fieldnames = row.keys()
     with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding) as f:
         csv_out = csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames)
         if writeheader and not append: csv_out.writeheader()
