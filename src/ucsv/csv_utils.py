@@ -46,10 +46,8 @@ def get_dialect(filename):
     raise ValueError
         
 def import_csv(filename, dialect=None):
-    if not dialect: dialect = get_dialect(filename)
-    with io.open(filename, 'rt', encoding=dialect.encoding) as f:
-        return list( csv.DictReader(f, dialect=dialect) )
-        
+    return list(import_csv_iter(filename, dialect))
+
 def import_csv_iter(filename, dialect=None):  
     if not dialect: dialect = get_dialect(filename)
     with io.open(filename, 'rt', encoding=dialect.encoding) as f:

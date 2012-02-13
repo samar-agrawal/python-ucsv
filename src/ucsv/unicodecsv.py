@@ -11,10 +11,7 @@ decode = lambda e: e.decode('utf-8')
 try:
     from collections import OrderedDict
 except ImportError:
-    try:
-        from ordereddict import OrderedDict
-    except ImportError:
-        OrderedDict = dict
+    from ordereddict import OrderedDict
 
 
 class reader(object):
@@ -95,11 +92,13 @@ class UTF8Encoder(object):
 class DictReader(object):
     def __init__(self, f, dict=OrderedDict, *args, **kwargs):
         self.dict = dict
-        self.reader = csv.DictReader(UTF8Encoder(f), *args, **kwargs)
+        self.fieldnames = kwargs.pop('fieldnames', None)
+        self.reader = csv.reader(UTF8Encoder(f), *args, **kwargs)
+        if not self.fieldnames: self.fieldnames = self.reader.next()
         
     def next(self):
         row = self.reader.next()
-        return self.dict((decode(k), decode(v)) for k, v in row.items())
+        return self.dict((decode(k), decode(v)) for k, v in zip(self.fieldnames, row))
         
     def __iter__(self):
         return self    
