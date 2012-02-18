@@ -28,7 +28,7 @@ def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, write
         csv_out = csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames)
         if writeheader and not append: csv_out.writeheader()
         while True:
-            csv_out.writerow(row)
+            csv_out.writerow(row, flush=False)
             row = yield
 
 def export_csv_tuples(filename, tuples, header=None, dialect=None):
@@ -66,14 +66,23 @@ def get_all_keys(rows, force_include=None):
     for row in rows:
         keys.update(row.keys())
     return sorted(keys)
+    
+def get_csvs_common_keys(csvs, keys=get_common_keys):
+    def get_first_row(csv):
+        return import_csv_iter(csv).next()
+    first_rows = [get_first_row(csv) for csv in csvs]
+    return keys(first_rows)
 
 def import_csvs(csvs):
     return list(itertools.chain(*[import_csv(c) for c in csvs]))
     
 def merge_csvs(csvs, output_filename, keys=get_common_keys):
-    rows = import_csvs(csvs)
-    if callable(keys): keys = keys(rows)
-    export_csv(output_filename, query(rows).project(*keys))
+    keys = get_csvs_common_keys(csvs, keys=keys)
+    output = export_csv_iter(output_filename, fieldnames=keys)
+    output.next()
+    for csv in csvs:
+        for row in import_csv_iter(csv):
+            output.send(row)
     
 def grouped_csv(input_filename, output_filename, dialect=None, key=lambda e: e['sku_config']):
     if not dialect: dialect = get_dialect(input_filename)
@@ -90,11 +99,8 @@ def grouped_csv(input_filename, output_filename, dialect=None, key=lambda e: e['
         for group, items in groupby(sorted(rows, key=key), key=key):
             yield list(items)[0]
     export_csv(output_filename, get_new_rows(), fieldnames=sorted(static_keys))
-    
 
 def slim_csv(input_filename, output_filename, fieldnames):
     sanitize = lambda e: e.replace('\r\n', '<br/>').replace('\n', '<br/>')
-    rows = import_csv(input_filename)
-    rows = [dict((k, sanitize(r.get(k, ''))) for k in fieldnames) for r in rows]
+    rows = (dict((k, sanitize(r.get(k, ''))) for k in fieldnames) for r in import_csv_iter(input_filename))
     export_csv(output_filename, rows, fieldnames)
-
