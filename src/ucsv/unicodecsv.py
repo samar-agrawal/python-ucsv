@@ -50,6 +50,12 @@ class writer(object):
     def writerows(self, rows):
         for row in rows:
             self.writerow(row)
+
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, *args):
+        self.flush()
             
     def __getattr__(self, name):
         return getattr(self.writer, name)
@@ -77,6 +83,12 @@ class DictWriter(object):
     def writerows(self, rows):
         for row in rows:
             self.writerow(row)
+            
+    def __enter__(self):
+        return self
+        
+    def __exit__(self, *args):
+        self.flush()
             
     def __getattr__(self, name):
         return getattr(self.writer, name)

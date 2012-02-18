@@ -25,20 +25,20 @@ def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, write
     row = yield
     if fieldnames is None: fieldnames = row.keys()
     with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding) as f:
-        csv_out = csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames)
-        if writeheader and not append: csv_out.writeheader()
-        while True:
-            csv_out.writerow(row, flush=False)
-            row = yield
+        with csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames) as csv_out:
+            if writeheader and not append: csv_out.writeheader()
+            while True:
+                csv_out.writerow(row, flush=False)
+                row = yield
+
 
 def export_csv_tuples(filename, tuples, header=None, dialect=None):
     if not dialect: dialect = get_dialect(filename)
     with io.open(filename, 'wt', newline='', encoding=dialect.encoding) as f:
-        csv_out = csv.writer(f, dialect=dialect)
-        if header: csv_out.writerow(header)
-        for t in tuples:
-            csv_out.writerow(t)
-        f.flush()
+        with csv.writer(f, dialect=dialect) as csv_out:
+            if header: csv_out.writerow(header)
+            for t in tuples:
+                csv_out.writerow(t)
         
 def get_dialect(filename):
     if filename.endswith("txt"): return csv.excel_tab
