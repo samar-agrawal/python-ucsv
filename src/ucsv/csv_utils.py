@@ -28,7 +28,7 @@ def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, write
         with csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames) as csv_out:
             if writeheader and not append: csv_out.writeheader()
             while True:
-                csv_out.writerow(row, flush=False)
+                csv_out.writerow(row)
                 row = yield
 
 

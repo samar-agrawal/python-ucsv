@@ -78,7 +78,8 @@ class DictWriter(object):
 
     def writeheader(self):
         self.writerow(OrderedDict((f, f) for f in self.writer.fieldnames), flush=False)
-        self.flush()
+        if len(self.queue.getvalue()) > 10000:
+            self.flush()
         
     def writerows(self, rows):
         for row in rows:
