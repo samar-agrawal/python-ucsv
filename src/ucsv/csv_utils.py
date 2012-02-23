@@ -84,23 +84,22 @@ def merge_csvs(csvs, output_filename, keys=get_common_keys):
         for row in import_csv_iter(csv):
             output.send(row)
     
-def grouped_csv(input_filename, output_filename, dialect=None, key=lambda e: e['sku_config']):
-    if not dialect: dialect = get_dialect(input_filename)
-    other_key = lambda e: e[0]
-    rows = import_csv(input_filename)
-    static_keys = None
-    for group, items in groupby(sorted(rows, key=key), key=key):
-        items = list(set([i for item in items for i in item.items()]))
-        this_static_keys = set()
-        for group, items in groupby(sorted(items, key=other_key), key=other_key):
-            if len(list(items)) == 1: this_static_keys.add(group)
-        static_keys = static_keys & this_static_keys if static_keys else this_static_keys
-    def get_new_rows():
-        for group, items in groupby(sorted(rows, key=key), key=key):
-            yield list(items)[0]
-    export_csv(output_filename, get_new_rows(), fieldnames=sorted(static_keys))
+def dedupe_csv(input_filename, output_filename, key):
+    output = export_csv_iter(output_filename)
+    output.next()
+
+    exported = set()
+    rows = import_csv_iter(input_filename)
+    for row in rows:
+        k = key(row)
+        if k in exported: continue
+        exported.add(k)
+        output.send(row)
+    output.close()
 
 def slim_csv(input_filename, output_filename, fieldnames):
-    sanitize = lambda e: e.replace('\r\n', '<br/>').replace('\n', '<br/>')
-    rows = (dict((k, sanitize(r.get(k, ''))) for k in fieldnames) for r in import_csv_iter(input_filename))
-    export_csv(output_filename, rows, fieldnames)
+    output = export_csv_iter(output_filename, fieldnames=fieldnames)
+    output.next()
+    for row in import_csv_iter(input_filename):
+        output.send(row)
+    output.close()
