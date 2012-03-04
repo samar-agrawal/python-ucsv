@@ -4,21 +4,25 @@ from itertools import groupby
 from collections import defaultdict
 from hzutils.hzasq import *
 
-class PETDialect(csv.Dialect):
-    delimiter = ';'
-    quoting = csv.QUOTE_ALL
-    doublequote = True
-    quotechar = '"'
-    lineterminator = '\r\n'
-    encoding = 'utf-8'
-setattr(csv.excel_tab, 'encoding', 'utf-16')
+class DictWriter(object):
+    def __init__(self, *args, **kwargs):
+        self.inner = export_csv_iter(*args, **kwargs)
+        self.writerow = self.inner.send
+        self.inner.next()        
+        
+    def writerows(self, dicts):
+        for d in dicts:
+            self.inner.send(d)
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, *args):
+        self.inner.close()
 
 def export_csv(filename, dicts, *args, **kwargs):
-    w = export_csv_iter(filename, *args, **kwargs)
-    w.next()
-    for d in dicts:
-        w.send(d)
-    w.close()
+    with DictWriter(filename, *args, **kwargs) as w:
+        w.writerows(dicts)
 
 def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, writeheader=True):
     if not dialect: dialect = get_dialect(filename)
@@ -39,19 +43,19 @@ def export_csv_tuples(filename, tuples, header=None, dialect=None):
             if header: csv_out.writerow(header)
             for t in tuples:
                 csv_out.writerow(t)
-        
+
 def get_dialect(filename):
     if filename.endswith("txt"): return csv.excel_tab
-    if filename.endswith("csv"): return PETDialect
+    if filename.endswith("csv"): return csv.PETDialect
     raise ValueError
         
-def import_csv(filename, dialect=None):
-    return list(import_csv_iter(filename, dialect))
+def import_csv(*args, **kwargs):
+    return list(import_csv_iter(*args, **kwargs))
 
-def import_csv_iter(filename, dialect=None):  
-    if not dialect: dialect = get_dialect(filename)
-    with io.open(filename, 'rt', encoding=dialect.encoding) as f:
-        for e in csv.DictReader(f, dialect=dialect):
+def import_csv_iter(filename, *args, **kwargs):  
+    if 'dialect' not in kwargs: kwargs['dialect'] = get_dialect(filename)
+    with io.open(filename, 'rt', encoding=kwargs['dialect'].encoding) as f:
+        for e in csv.DictReader(f, *args, **kwargs):
             yield e
 
 def get_common_keys(rows, force_include=lambda k: False):
@@ -78,28 +82,20 @@ def import_csvs(csvs):
     
 def merge_csvs(csvs, output_filename, keys=get_common_keys):
     keys = get_csvs_common_keys(csvs, keys=keys)
-    output = export_csv_iter(output_filename, fieldnames=keys)
-    output.next()
-    for csv in csvs:
-        for row in import_csv_iter(csv):
-            output.send(row)
+    with DictWriter(output_filename, fieldnames=keys) as output:
+        for csv in csvs:
+            output.writerows(import_csv_iter(csv))
     
 def dedupe_csv(input_filename, output_filename, key):
-    output = export_csv_iter(output_filename)
-    output.next()
-
-    exported = set()
-    rows = import_csv_iter(input_filename)
-    for row in rows:
-        k = key(row)
-        if k in exported: continue
-        exported.add(k)
-        output.send(row)
-    output.close()
+    with DictWriter(output_filename) as output:
+        exported = set()
+        rows = import_csv_iter(input_filename)
+        for row in rows:
+            k = key(row)
+            if k in exported: continue
+            exported.add(k)
+            output.writerow(row)
 
 def slim_csv(input_filename, output_filename, fieldnames):
-    output = export_csv_iter(output_filename, fieldnames=fieldnames)
-    output.next()
-    for row in import_csv_iter(input_filename):
-        output.send(row)
-    output.close()
+    with DictWriter(output_filename, fieldnames=fieldnames) as output:
+        output.writerows(import_csv_iter(input_filename))

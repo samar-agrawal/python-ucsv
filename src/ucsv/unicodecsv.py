@@ -3,33 +3,23 @@ import csv
 from csv import *
 from cStringIO import StringIO
 
+
+class PETDialect(csv.Dialect):
+    delimiter = ';'
+    quoting = csv.QUOTE_ALL
+    doublequote = True
+    quotechar = '"'
+    lineterminator = '\r\n'
+    encoding = 'utf-8'
 setattr(csv.excel_tab, 'encoding', 'utf-16')
 
-encode = lambda e: unicode(e).encode('utf-8')
-decode = lambda e: e.decode('utf-8')
+encode = lambda e: unicode(e).encode('utf-8') if e is not None else ''
+decode = lambda e: e.decode('utf-8') if e is not None else u''
 
 try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
-
-
-class reader(object):
-    def __init__(self, f, *args, **kwargs):
-        self.queue = StringIO()
-        self.queue.write(encode(f.read()))
-        self.queue.seek(0)        
-        self.reader = csv.reader(self.queue, *args, **kwargs)
-        
-    def next(self):
-        row = self.reader.next()
-        return [decode(e) for e in row]
-        
-    def __getattr__(self, name):
-        return getattr(self.reader, name)
-        
-    def __iter__(self):
-        return self
 
 
 class writer(object):
@@ -105,13 +95,17 @@ class UTF8Encoder(object):
 class DictReader(object):
     def __init__(self, f, dict=OrderedDict, *args, **kwargs):
         self.dict = dict
+        self.map_fieldnames = kwargs.pop('map_fieldnames', None)
         self.fieldnames = kwargs.pop('fieldnames', None)
         self.reader = csv.reader(UTF8Encoder(f), *args, **kwargs)
         if not self.fieldnames: self.fieldnames = self.reader.next()
         
     def next(self):
         row = self.reader.next()
-        return self.dict((decode(k), decode(v)) for k, v in zip(self.fieldnames, row))
+        if self.map_fieldnames:
+            return self.dict((self.map_fieldnames(decode(k)), decode(v)) for k, v in zip(self.fieldnames, row))
+        else:
+            return self.dict((decode(k), decode(v)) for k, v in zip(self.fieldnames, row))
         
     def __iter__(self):
         return self    
@@ -119,3 +113,18 @@ class DictReader(object):
     def __getattr__(self, name):
         return getattr(self.reader, name)
 
+class reader(object):
+    def __init__(self, f, *args, **kwargs):
+        self.reader = csv.reader(UTF8Encoder(f), *args, **kwargs)
+        
+    def next(self):
+        row = self.reader.next()
+        return [decode(e) for e in row]
+        
+    def __getattr__(self, name):
+        return getattr(self.reader, name)
+        
+    def __iter__(self):
+        return self
+
+        
