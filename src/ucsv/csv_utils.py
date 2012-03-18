@@ -1,4 +1,4 @@
-import itertools, io
+import itertools, io, sys
 from ucsv import unicodecsv as csv
 from itertools import groupby
 from collections import defaultdict
@@ -47,6 +47,7 @@ def export_csv_tuples(filename, tuples, header=None, dialect=None):
 def get_dialect(filename):
     if filename.endswith("txt"): return csv.excel_tab
     if filename.endswith("csv"): return csv.PETDialect
+    if filename == '-': return csv.excel
     raise ValueError
         
 def import_csv(*args, **kwargs):
@@ -54,7 +55,9 @@ def import_csv(*args, **kwargs):
 
 def import_csv_iter(filename, *args, **kwargs):  
     if 'dialect' not in kwargs: kwargs['dialect'] = get_dialect(filename)
-    with io.open(filename, 'rt', encoding=kwargs['dialect'].encoding) as f:
+    closefd = filename != '-'
+    if filename == '-': filename = sys.stdin.fileno()
+    with io.open(filename, 'rt', encoding=kwargs['dialect'].encoding, closefd=closefd) as f:
         for e in csv.DictReader(f, *args, **kwargs):
             yield e
 
