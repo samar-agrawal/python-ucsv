@@ -54,6 +54,8 @@ class writer(object):
 class DictWriter(object):
     def __init__(self, f, *args, **kwargs):
         self.queue = StringIO()
+        if 'fieldnames' in kwargs:
+            kwargs['fieldnames'] = [k.encode('ascii', 'ignore') for k in kwargs['fieldnames']]
         self.writer = csv.DictWriter(self.queue, *args, **kwargs)
         self.stream = f
         
@@ -63,7 +65,7 @@ class DictWriter(object):
         self.queue.truncate(0)
         
     def writerow(self, row, flush=True):
-        self.writer.writerow(OrderedDict((encode(k), encode(row.get(k, ''))) for k in self.writer.fieldnames))
+        self.writer.writerow(OrderedDict((k.encode('ascii', 'ignore'), encode(row.get(k, ''))) for k in self.writer.fieldnames))
         if flush: self.flush()
 
     def writeheader(self):
