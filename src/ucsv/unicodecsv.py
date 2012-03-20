@@ -6,7 +6,7 @@ from cStringIO import StringIO
 
 class PETDialect(csv.Dialect):
     delimiter = ';'
-    quoting = csv.QUOTE_ALL
+    quoting = csv.QUOTE_MINIMAL
     doublequote = True
     quotechar = '"'
     lineterminator = '\r\n'
