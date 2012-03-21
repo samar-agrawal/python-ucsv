@@ -28,7 +28,9 @@ def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, write
     if not dialect: dialect = get_dialect(filename)
     row = yield
     if fieldnames is None: fieldnames = row.keys()
-    with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding) as f:
+    closefd = filename != '-'
+    if filename == '-': filename = sys.stdout.fileno()
+    with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding, closefd=closefd) as f:
         with csv.DictWriter(f, dialect=dialect, fieldnames=fieldnames) as csv_out:
             if writeheader and not append: csv_out.writeheader()
             while True:
@@ -47,6 +49,7 @@ def export_csv_tuples(filename, tuples, header=None, dialect=None):
 def get_dialect(filename):
     if filename.endswith("txt"): return csv.excel_tab
     if filename.endswith("csv"): return csv.PETDialect
+    if filename.endswith("tsv"): return csv.excel_tsv
     if filename == '-': return csv.excel
     raise ValueError
         

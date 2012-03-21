@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
-import csv
+import csv, io
 from csv import *
 from cStringIO import StringIO
 
 
 class PETDialect(csv.Dialect):
     delimiter = ';'
-    quoting = csv.QUOTE_MINIMAL
+    quoting = csv.QUOTE_ALL
+    doublequote = True
+    quotechar = '"'
+    lineterminator = '\r\n'
+    encoding = 'utf-8'
+class excel_tsv(csv.Dialect):
+    delimiter = '\t'
+    quoting = csv.QUOTE_ALL
     doublequote = True
     quotechar = '"'
     lineterminator = '\r\n'
@@ -28,25 +35,30 @@ class writer(object):
         self.queue = StringIO()
         self.writer = csv.writer(self.queue, *args, **kwargs)
         self.stream = f
+        if isinstance(self.stream, basestring):
+            self.stream = io.open(f, 'wt', newline='', encoding=kwargs['dialect'].encoding)
+            
         
     def flush(self):
         data = decode(self.queue.getvalue())
         self.stream.write(data)
         self.queue.truncate(0)    
         
-    def writerow(self, row):
+    def writerow(self, row, flush=True):
         self.writer.writerow([encode(s) for s in row])
-        self.flush()
+        if flush: self.flush()
         
     def writerows(self, rows):
         for row in rows:
-            self.writerow(row)
+            self.writerow(row, False)
+        self.flush()
 
     def __enter__(self):
         return self
         
     def __exit__(self, *args):
         self.flush()
+        self.stream.close()
             
     def __getattr__(self, name):
         return getattr(self.writer, name)
