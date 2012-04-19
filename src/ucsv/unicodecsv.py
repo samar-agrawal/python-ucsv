@@ -11,6 +11,7 @@ class PETDialect(csv.Dialect):
     quotechar = '"'
     lineterminator = '\r\n'
     encoding = 'utf-8'
+
 class excel_tsv(csv.Dialect):
     delimiter = '\t'
     quoting = csv.QUOTE_ALL
@@ -108,11 +109,11 @@ class UTF8Encoder(object):
             yield encode(e)
         
 class DictReader(object):
-    def __init__(self, f, dict=OrderedDict, *args, **kwargs):
+    def __init__(self, f, dict=OrderedDict, encode=True, *args, **kwargs):
         self.dict = dict
         self.map_fieldnames = kwargs.pop('map_fieldnames', None)
         self.fieldnames = kwargs.pop('fieldnames', None)
-        self.reader = csv.reader(UTF8Encoder(f), *args, **kwargs)
+        self.reader = csv.reader(UTF8Encoder(f) if encode else f, *args, **kwargs)
         if not self.fieldnames: self.fieldnames = self.reader.next()
         
     def next(self):

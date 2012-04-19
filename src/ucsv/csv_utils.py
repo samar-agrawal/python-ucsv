@@ -20,7 +20,10 @@ class DictWriter(object):
     def __exit__(self, *args):
         self.inner.close()
 
-def export_csv(filename, dicts, *args, **kwargs):
+def export_csv(filename, dicts, calculate_fieldnames=False, *args, **kwargs):
+    if calculate_fieldnames:
+        dicts = list(dicts)
+        kwargs['fieldnames'] = get_all_keys(dicts)
     with DictWriter(filename, *args, **kwargs) as w:
         w.writerows(dicts)
 
