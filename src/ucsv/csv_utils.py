@@ -2,7 +2,6 @@ import itertools, io, sys
 from ucsv import unicodecsv as csv
 from itertools import groupby
 from collections import defaultdict
-from hzutils.hzasq import *
 
 class DictWriter(object):
     def __init__(self, *args, **kwargs):
