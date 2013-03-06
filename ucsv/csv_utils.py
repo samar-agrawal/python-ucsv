@@ -7,15 +7,15 @@ class DictWriter(object):
     def __init__(self, *args, **kwargs):
         self.inner = export_csv_iter(*args, **kwargs)
         self.writerow = self.inner.send
-        self.inner.next()        
-        
+        self.inner.next()
+
     def writerows(self, dicts):
         for d in dicts:
             self.inner.send(d)
 
     def __enter__(self):
         return self
-    
+
     def __exit__(self, *args):
         self.inner.close()
 
@@ -40,6 +40,18 @@ def export_csv_iter(filename, fieldnames=None, dialect=None, append=False, write
                 row = yield
 
 
+def export_csv_tuples_iter(filename, header=None, dialect=None, append=False):
+    if not dialect: dialect = get_dialect(filename)
+    closefd = filename != '-'
+    if filename == '-': filename = sys.stdout.fileno()
+    rows = yield
+    with io.open(filename, 'at' if append else 'wt', newline='', encoding=dialect.encoding, closefd=closefd) as f:
+        with csv.writer(f, dialect=dialect) as csv_out:
+            while True:
+                csv_out.writerows(rows)
+                rows = yield
+
+
 def export_csv_tuples(filename, tuples, header=None, dialect=None):
     if not dialect: dialect = get_dialect(filename)
     with io.open(filename, 'wt', newline='', encoding=dialect.encoding) as f:
@@ -54,16 +66,16 @@ def get_dialect(filename):
     if filename.endswith("tsv"): return csv.excel_tsv
     if filename == '-': return csv.excel
     raise ValueError
-        
+
 def import_csv(*args, **kwargs):
     return list(import_csv_iter(*args, **kwargs))
 
-def import_csv_iter(filename, *args, **kwargs):  
+def import_csv_iter(filename, *args, **kwargs):
     if 'dialect' not in kwargs: kwargs['dialect'] = get_dialect(filename)
     closefd = filename != '-'
     if filename == '-': filename = sys.stdin.fileno()
     with io.open(filename, 'rt', encoding=kwargs['dialect'].encoding, closefd=closefd) as f:
-        for e in csv.DictReader(f, *args, **kwargs):
+        for i, e in enumerate(csv.DictReader(f, *args, **kwargs)):
             yield e
 
 def get_common_keys(rows, force_include=lambda k: False):
@@ -78,7 +90,7 @@ def get_all_keys(rows, force_include=None):
     for row in rows:
         keys.update(row.keys())
     return sorted(keys)
-    
+
 def get_csvs_common_keys(csvs, keys=get_common_keys):
     def get_first_row(csv):
         return import_csv_iter(csv).next()
@@ -87,13 +99,13 @@ def get_csvs_common_keys(csvs, keys=get_common_keys):
 
 def import_csvs(csvs):
     return list(itertools.chain(*[import_csv(c) for c in csvs]))
-    
+
 def merge_csvs(csvs, output_filename, keys=get_common_keys):
     keys = get_csvs_common_keys(csvs, keys=keys)
     with DictWriter(output_filename, fieldnames=keys) as output:
         for csv in csvs:
             output.writerows(import_csv_iter(csv))
-    
+
 def dedupe_csv(input_filename, output_filename, key):
     with DictWriter(output_filename) as output:
         exported = set()
