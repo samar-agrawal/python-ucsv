@@ -2,6 +2,7 @@ import itertools, io, sys
 from ucsv import unicodecsv as csv
 from itertools import groupby
 from collections import defaultdict
+import os.path
 
 class DictWriter(object):
     def __init__(self, *args, **kwargs):
@@ -60,10 +61,18 @@ def export_csv_tuples(filename, tuples, header=None, dialect=None):
             for t in tuples:
                 csv_out.writerow(t)
 
+DIALECTS = {
+        'txt' : csv.excel_tab,
+        'csv' : csv.PETDialect,
+        'tsv' : csv.excel_tsv,
+}
+def register_filename_dialect(extension, dialect):
+    DIALECTS[extension] = dialect
+
 def get_dialect(filename):
-    if filename.endswith("txt"): return csv.excel_tab
-    if filename.endswith("csv"): return csv.PETDialect
-    if filename.endswith("tsv"): return csv.excel_tsv
+    extension = os.path.splitext(filename.lower())[1][1:]
+    if extension in DIALECTS:
+        return DIALECTS[extension]
     if filename == '-': return csv.excel
     raise ValueError
 
