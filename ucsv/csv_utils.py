@@ -4,6 +4,10 @@ from itertools import groupby
 from collections import defaultdict
 import os.path
 
+def grouper(n, iterable, fillvalue=None):
+    args = [iter(iterable)] * n
+    return takewhile(bool, izip_longest(fillvalue=fillvalue, *args))
+
 class DictWriter(object):
     def __init__(self, *args, **kwargs):
         self.inner = export_csv_iter(*args, **kwargs)
