@@ -4,9 +4,12 @@ from itertools import groupby
 from collections import defaultdict
 import os.path
 
-def grouper(n, iterable, fillvalue=None):
-    args = [iter(iterable)] * n
-    return itertools.takewhile(bool, itertools.izip_longest(fillvalue=fillvalue, *args))
+def grouper(n, iterable):
+    it = iter(iterable)
+    while True:
+       chunk = tuple(itertools.islice(it, n))
+       if not chunk: return
+       yield chunk
 
 class DictWriter(object):
     def __init__(self, *args, **kwargs):
