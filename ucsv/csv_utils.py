@@ -87,6 +87,14 @@ def import_csv_iter(filename, *args, **kwargs):
         for i, e in enumerate(csv.DictReader(f, *args, **kwargs)):
             yield e
 
+def import_csv_tuples_iter(filename, *args, **kwargs):
+    if 'dialect' not in kwargs: kwargs['dialect'] = get_dialect(filename)
+    closefd = filename != '-'
+    if filename == '-': filename = sys.stdin.fileno()
+    with io.open(filename, 'rt', encoding=kwargs['dialect'].encoding, closefd=closefd) as f:
+        for e in csv.reader(f, *args, **kwargs):
+            yield e
+
 def get_common_keys(rows, force_include=lambda k: False):
     counter = defaultdict(int)
     for row in rows:
