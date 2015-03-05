@@ -87,7 +87,7 @@ def import_csv(*args, **kwargs):
     return list(import_csv_iter(*args, **kwargs))
 
 def import_csv_iter(filename, *args, **kwargs):
-    if 'dialect' not in kwargs: kwargs['dialect'] = get_dialect(filename)
+    if not kwargs.get('dialect'): kwargs['dialect'] = get_dialect(filename)
     closefd = filename != '-'
     if filename == '-': filename = sys.stdin.fileno()
     with io.open(filename, 'rt', encoding=kwargs['dialect'].encoding, closefd=closefd) as f:
@@ -95,7 +95,7 @@ def import_csv_iter(filename, *args, **kwargs):
             yield e
 
 def import_csv_tuples_iter(filename, *args, **kwargs):
-    if 'dialect' not in kwargs: kwargs['dialect'] = get_dialect(filename)
+    if not kwargs.get('dialect'): kwargs['dialect'] = get_dialect(filename)
     closefd = filename != '-'
     if filename == '-': filename = sys.stdin.fileno()
     with io.open(filename, 'rt', encoding=kwargs['dialect'].encoding, closefd=closefd) as f:
