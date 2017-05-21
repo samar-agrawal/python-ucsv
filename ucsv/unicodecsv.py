@@ -1,8 +1,16 @@
 # -*- coding: utf-8 -*-
+import sys
 import csv, io
 from csv import *
-from cStringIO import StringIO
 
+PY3 = sys.version_info > (3,)
+
+try:
+    from cStringIO import StringIO
+    unicode = unicode
+except ImportError:
+    from io import StringIO
+    unicode = str
 
 class PETDialect(csv.Dialect):
     delimiter = ';'
@@ -32,8 +40,12 @@ class mysql_tsv(csv.Dialect):
 setattr(csv.excel, 'encoding', 'utf-8')
 setattr(csv.excel_tab, 'encoding', 'utf-16')
 
-encode = lambda e: unicode(e).encode('utf-8') if e is not None else ''
-decode = lambda e: e.decode('utf-8') if e is not None else u''
+if PY3:
+    encode = lambda e: e if e is not None else ''
+    decode = lambda e: e if e is not None else u''
+else:
+    encode = lambda e: unicode(e).encode('utf-8') if e is not None else ''
+    decode = lambda e: e.decode('utf-8') if e is not None else u''
 
 try:
     from collections import OrderedDict
@@ -124,10 +136,13 @@ class DictReader(object):
         self.map_fieldnames = kwargs.pop('map_fieldnames', None)
         self.fieldnames = kwargs.pop('fieldnames', None)
         self.reader = csv.reader(UTF8Encoder(f) if encode else f, *args, **kwargs)
-        if not self.fieldnames: self.fieldnames = self.reader.next()
+        try:
+            if not self.fieldnames: self.fieldnames = self.reader.next()
+        except AttributeError:
+            if not self.fieldnames: self.fieldnames = next(self.reader)
 
     def next(self):
-        row = self.reader.next()
+        row = next(self.reader) if PY3 else self.reader.next()
         if self.map_fieldnames:
             return self.dict((self.map_fieldnames(decode(k)), decode(v)) for k, v in zip(self.fieldnames, row))
         else:
@@ -138,6 +153,8 @@ class DictReader(object):
 
     def __getattr__(self, name):
         return getattr(self.reader, name)
+
+    __next__ = next
 
 class reader(object):
     def __init__(self, f, *args, **kwargs):
